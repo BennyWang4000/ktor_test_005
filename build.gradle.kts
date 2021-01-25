@@ -13,6 +13,8 @@ val ktorFlywayVersion = "1.2.1"
 plugins {
     application
     kotlin("jvm") version "1.4.21"
+
+    id("com.google.cloud.tools.jib") version "2.7.1"
 }
 
 group = "com.example"
@@ -44,13 +46,13 @@ dependencies {
     implementation("io.ktor:ktor-client-apache:$ktor_version")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
 
-
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
 
+    implementation("org.jetbrains.exposed:exposed-jodatime:$exposedVersion")
 
-    implementation("com.zaxxer:HikariCP:$hikariCpVersion")
+//    implementation("com.zaxxer:HikariCP:$hikariCpVersion")
 
 
     implementation("com.h2database:h2:$h2Version")
@@ -58,6 +60,10 @@ dependencies {
 
     implementation("com.viartemev:ktor-flyway-feature:$ktorFlywayVersion")
     implementation("org.flywaydb:flyway-core:$flywayVersion")
+
+
+
+//    implementation("io.kotless", "ktor-lang", "0.1.6")
 }
 
 kotlin.sourceSets["main"].kotlin.srcDirs("src")

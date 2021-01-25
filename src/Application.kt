@@ -1,26 +1,32 @@
 package com.example
 
-import com.example.service.BookService
-import com.example.service.DatabaseFactory
-import com.example.web.bookResource
+import freemarker.cache.*
 import io.ktor.application.*
 import io.ktor.routing.*
-import com.fasterxml.jackson.databind.*
-import com.viartemev.ktor.flyway.FlywayFeature
 import io.ktor.jackson.*
 import io.ktor.features.*
+import io.ktor.freemarker.*
+import io.ktor.http.*
+import io.ktor.request.*
+import io.ktor.response.*
 import io.ktor.util.*
-import org.jetbrains.exposed.sql.Database
+import io.ktor.websocket.*
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.*
+import org.joda.time.*
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
+//fun main(args: Array<String>) {
+//    embeddedServer(Netty, commandLineEnvironment(args)).start(wait = true)
+//}
 @KtorExperimentalAPI
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
-//    install(FreeMarker) {
-//        templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
-//    }
+    install(FreeMarker) {
+        templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
+    }
 
 //    install(io.ktor.websocket.WebSockets) {
 //        pingPeriod = Duration.ofSeconds(15)
@@ -29,22 +35,88 @@ fun Application.module(testing: Boolean = false) {
 //        masking = false
 //    }
 
+//    install(DefaultHeaders)
+//    install(CallLogging)
+//    install(WebSockets)
+
     install(ContentNegotiation) {
         jackson {
-            enable(SerializationFeature.INDENT_OUTPUT)
+//            configure(SerializationFeature.INDENT_OUTPUT, true)
         }
     }
-    // database-related code
-    Database.connect(DatabaseFactory.dataSource)
 
-    install(FlywayFeature) {
-        dataSource = DatabaseFactory.dataSource
+//    // database-related code
+//    Database.connect(DatabaseFactory.dataSource)
+//    install(FlywayFeature) {
+//        dataSource = DatabaseFactory.dataSource
+//    }
+
+    Database.connect(
+        url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+        driver = "org.h2.Driver"
+    )
+
+    transaction {
+        SchemaUtils.create(Books)
     }
 
-    val bookService = BookService()
+//    transaction {
+////        Book.new {
+////            name= "init"
+////            desc= "desc"
+////            DateTime.now()
+////            DateTime.now()
+////        }
+//        Books.insert {
+//            it[name]= "init"
+//            it[desc]= "desc"
+//            it[createdTime]= DateTime.now()
+//            it[updatedTime]= DateTime.now()
+//        }
+//    }
 
-    install(Routing){
-        bookResource(bookService)
+//    val bookService = BookService()
+//
+//    install(Routing){
+//        bookResource(bookService)
+//    }
+
+    val indexPage = javaClass.getResource("/index.html").readText()
+
+    routing{
+
+        get("/") {
+            call.respondText(indexPage, ContentType.Text.Html)
+//            call.respond(FreeMarkerContent("index.ftl", mapOf("data" to IndexData(listOf(1, 2, 3))), ""))
+        }
+        post("/book") {
+            val book= call.receive<BookRequest>()
+
+            transaction {
+                Books.insert {
+                    it[name]= book.name
+                    it[desc]= book.desc
+                    it[createdTime]= DateTime.now()
+                    it[updatedTime]= DateTime.now()
+                }
+            }
+
+            call.respond(book)
+        }
+        get("/book"){
+            val books= transaction {
+                Books.selectAll().map {
+                    BookResponse(
+                        it[Books.id].value,
+                        it[Books.name],
+                        it[Books.desc],
+                        it[Books.createdTime].toString(),
+                        it[Books.updatedTime].toString()
+                    )
+                }
+            }
+            call.respond(mapOf("data" to books))
+        }
     }
 
 //    val client = HttpClient(Apache) {
@@ -101,6 +173,7 @@ fun Application.module(testing: Boolean = false) {
 //        }
 //    }
 }
+
 
 //
 //fun FlowOrMetaDataContent.styleCss(builder: CSSBuilder.() -> Unit) {
